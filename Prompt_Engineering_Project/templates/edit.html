@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Todo with Pomodoro Timer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .pomodoro-timer {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .timer {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        .notification {
+            display: none;
+        }
+        .progress {
+            margin-bottom: 20px;
+        }
+        .dark-mode {
+            background-color: #121212;
+            color: #ffffff;
+        }
+        .dark-mode .box {
+            background-color: #1e1e1e;
+        }
+        .dark-mode .input, .dark-mode .select select {
+            background-color: #2e2e2e;
+            color: #ffffff;
+        }
+        .dark-mode .button.is-primary {
+            background-color: #4a4a4a;
+            color: #ffffff;
+        }
+        .dark-mode .button.is-danger {
+            background-color: #ff3860;
+            color: #ffffff;
+        }
+        .dark-mode .button.is-warning {
+            background-color: #ffdd57;
+            color: #121212;
+        }
+        .dark-mode .button.is-light {
+            background-color: #4a4a4a;
+            color: #ffffff;
+        }
+        .dark-mode .notification.is-primary {
+            background-color: #4a4a4a;
+            color: #ffffff;
+        }
+        .dark-mode-toggle {
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .dark-mode-toggle:hover {
+            transform: rotate(180deg);
+        }
+        .title, .label {
+            color: #333;
+        }
+        .dark-mode .title, .dark-mode .label {
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="columns">
+            <div class="column is-two-thirds">
+                <section class="section">
+                    <h1 class="title">Edit Todo</h1>
+                    <div id="notification" class="notification is-primary"></div>
+                    <form id="editForm">
+                        <input type="hidden" id="todoId">
+                        <div class="field">
+                            <label class="label" for="todoText">Todo:</label>
+                            <div class="control">
+                                <input class="input" type="text" id="todoText" required>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="label" for="categorySelect">Category:</label>
+                            <div class="control">
+                                <div class="select">
+                                    <select id="categorySelect" name="categorySelect">
+                                        <option value="Work">Work</option>
+                                        <option value="Personal">Personal</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="label" for="prioritySelect">Priority:</label>
+                            <div class="control">
+                                <div class="select">
+                                    <select id="prioritySelect" name="prioritySelect">
+                                        <option value="Low">Low</option>
+                                        <option value="Medium">Medium</option>
+                                        <option value="High">High</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="control">
+                            <button class="button is-primary" type="submit">Save</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+            <div class="column">
+                <section class="section">
+                    <h1 class="title">Pomodoro Timer</h1>
+                    <div class="box pomodoro-timer">
+                        <div class="timer" id="timer">25:00</div>
+                        <progress class="progress is-primary" id="progressBar" value="100" max="100"></progress>
+                        <button class="button is-primary" id="startButton">Start</button>
+                        <button class="button is-warning" id="stopButton">Stop</button>
+                        <button class="button is-danger" id="resetButton">Reset</button>
+                        <span class="icon dark-mode-toggle" id="darkModeToggle">
+                            <i class="fas fa-moon"></i>
+                        </span>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const todoId = document.getElementById('todoId');
+            const todoText = document.getElementById('todoText');
+            const categorySelect = document.getElementById('categorySelect');
+            const prioritySelect = document.getElementById('prioritySelect');
+            const notification = document.getElementById('notification');
+            const body = document.body;
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const darkModeIcon = darkModeToggle.querySelector('i');
+
+            // Load the existing todo item when the page loads
+            const id = window.location.pathname.split('/').pop();
+            fetch(`/todo/${id}`)
+            .then(response => response.json())
+            .then(data => {
+                todoId.value = data.id;
+                todoText.value = data.text;
+                categorySelect.value = data.category;
+                prioritySelect.value = data.priority;
+            })
+            .catch(error => console.error('Error:', error));
+
+            document.getElementById('editForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+                const id = todoId.value;
+                const text = todoText.value;
+                const category = categorySelect.value;
+                const priority = prioritySelect.value;
+
+                fetch(`/edit/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text, category: category, priority: priority })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        notification.textContent = 'Todo updated successfully!';
+                        notification.classList.add('is-success');
+                        notification.classList.remove('is-danger');
+                        notification.style.display = 'block';
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 2000);
+                    } else {
+                        notification.textContent = 'Error updating todo.';
+                        notification.classList.add('is-danger');
+                        notification.classList.remove('is-success');
+                        notification.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    notification.textContent = 'Error updating todo.';
+                    notification.classList.add('is-danger');
+                    notification.classList.remove('is-success');
+                    notification.style.display = 'block';
+                    console.error('Error:', error);
+                });
+            });
+
+            // Pomodoro Timer Script
+            let timer;
+            let isRunning = false;
+            let timeLeft = 1500; // 25 minutes in seconds
+            const timerElement = document.getElementById('timer');
+            const progressBar = document.getElementById('progressBar');
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            const resetButton = document.getElementById('resetButton');
+
+            function updateTimer() {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                progressBar.value = (timeLeft / 1500) * 100;
+            }
+
+            function startTimer() {
+                if (!isRunning) {
+                    isRunning = true;
+                    timer = setInterval(() => {
+                        if (timeLeft > 0) {
+                            timeLeft--;
+                            updateTimer();
+                        } else {
+                            clearInterval(timer);
+                            isRunning = false;
+                            alert('Pomodoro session completed!');
+                            playSound();
+                        }
+                    }, 1000);
+                }
+            }
+
+            function stopTimer() {
+                clearInterval(timer);
+                isRunning = false;
+            }
+
+            function resetTimer() {
+                clearInterval(timer);
+                isRunning = false;
+                timeLeft = 1500;
+                updateTimer();
+            }
+
+            function playSound() {
+                const audio = new Audio('https://www.soundjay.com/button/beep-07.wav');
+                audio.play();
+            }
+
+            function toggleDarkMode() {
+                body.classList.toggle('dark-mode');
+                if (body.classList.contains('dark-mode')) {
+                    darkModeIcon.classList.remove('fa-moon');
+                    darkModeIcon.classList.add('fa-sun');
+                } else {
+                    darkModeIcon.classList.remove('fa-sun');
+                    darkModeIcon.classList.add('fa-moon');
+                }
+            }
+
+            startButton.addEventListener('click', startTimer);
+            stopButton.addEventListener('click', stopTimer);
+            resetButton.addEventListener('click', resetTimer);
+            darkModeToggle.addEventListener('click', toggleDarkMode);
+
+            updateTimer();
+        });
+    </script>
+</body>
+</html>
